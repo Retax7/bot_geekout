@@ -14,6 +14,7 @@ namespace Awesome
     {
         static ITelegramBotClient botClient;
         static bool validabots = true;
+        static string mensaje_de_bienvenida;
 
         static void Main()
         {
@@ -24,7 +25,7 @@ namespace Awesome
             Console.WriteLine(
               $"Hola Mundo! Soy {me.Id} y mi nombre es  {me.FirstName}."
             );
-
+            mensaje_de_bienvenida = "Te damos la bienvenida al chat de Geek Out! Argentina, este es un grupo donde hablamos principalmente de juegos de mesa, comics, películas, series y otras nerdeadas. ¿Te gusta alguna de estas cosas?\n ";
             botClient.OnMessage += Bot_OnMessage;
             botClient.StartReceiving();
             Thread.Sleep(int.MaxValue);
@@ -50,19 +51,22 @@ namespace Awesome
                 {
                     accion = e.Message.Text.Split(' ').First();
                     Console.WriteLine("accion es:" + accion);
+
+                    //Console.WriteLine("Nombre del bot es:" + botClient.bot);
+
+                    bool tienepermiso = true;
+                    Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Status);
+                    Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status);
+                    //Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Id);
+                    if (botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "administrator"
+                         || botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "creator")
+                    { tienepermiso = true; }
+                    else { tienepermiso = false; }
+
                     switch (accion)
                     {
                         case "/validabots":
                             accion = "validabots";
-                            bool tienepermiso = true;
-                            Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Status);
-                            Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status);
-                            //Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Id);
-                            if (botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "administrator"
-                                 || botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "creator")
-                            { tienepermiso = true; }
-                            else { tienepermiso = false ; }
-
 
                             //String  tipo_de_miembro = botClient.GetChatMemberAsync(e.Message.Chat.Id , e.Message.From.Id).Result.Status ;
                             //if (tipo_de_miembro == "administrator")
@@ -98,6 +102,21 @@ namespace Awesome
                             }
 
                             break;
+                        case "/bienvenida":
+                            if (tienepermiso)
+                            {
+                                int i = e.Message.Text.IndexOf(" ") + 1;
+                                mensaje_de_bienvenida = e.Message.Text.Substring(i);
+                            }
+                            else
+                            {
+                                await botClient.SendTextMessageAsync(
+                                              chatId: e.Message.Chat,
+                                              text: "No tiene permiso para usar este comando."
+                                              );
+                            }
+                            
+                            break;
                         default: 
                             accion = "mensaje";
                             break;
@@ -130,13 +149,30 @@ namespace Awesome
                     //);
                     //*** fin comments ***
 
-                    await botClient.SendTextMessageAsync(
-                        chatId: e.Message.Chat,
-                        text: "Hola " +  e.Message.NewChatMembers[0].Username ?? "[inserte nombre de quien se haya unido]" + "! Te damos la bienvenida al chat de Geek Out! Argentina, este es un grupo donde hablamos principalmente de juegos de mesa, comics, películas, series y otras nerdeadas. ¿Te gusta alguna de estas cosas?\n "
-                    );
+                    //parche para que no de bienvenida a los nuevos usuarios al prenderlo cada mañana.
+                    //if (botClient.GetChatMemberAsync(e.Message.Chat.Id,e.Message.NewChatMembers[0].Id).Status.ToString()  =="member")
+                    //{
+
+                    //}
+                    if (e.Message.NewChatMembers[0].Username == null)
+                    {
+                        await botClient.SendTextMessageAsync(
+                          chatId: e.Message.Chat,
+                          text: "Hola [inserte nombre aqui]!" +mensaje_de_bienvenida 
+                      );
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(
+                              chatId: e.Message.Chat,
+                              text: "Hola " + e.Message.NewChatMembers[0].Username + mensaje_de_bienvenida 
+                          );
+                    }
+
 
                     //Setea los permisos
                     botClient.RestrictChatMemberAsync(e.Message.Chat.Id, e.Message.NewChatMembers[0].Id, DateTime.Now.AddDays(7), true, false, false, false);
+
                 }
             }
             else

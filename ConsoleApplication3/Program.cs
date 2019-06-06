@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +18,7 @@ namespace Awesome
 
         static void Main()
         {
-            botClient = new TelegramBotClient("873749474:AAFY4D7g8DgyJYBdxeXeq0UENFWvRkoek_k");
+            botClient = new TelegramBotClient("873749474:AAFY4D7g8DgyJYBdxeXeq0UENFWvRkoek_k");//878571487:AAF_5ome_5mGeEz1xKdc9e0BvmPCqduajgs");//873749474:AAFY4D7g8DgyJYBdxeXeq0UENFWvRkoek_k");
 
             var me = botClient.GetMeAsync().Result;
             //verifica que el bot ande y da el id y nombre
@@ -28,7 +28,7 @@ namespace Awesome
             mensaje_de_bienvenida = "Te damos la bienvenida al chat de Geek Out! Argentina, este es un grupo donde hablamos principalmente de juegos de mesa, comics, películas, series y otras nerdeadas. ¿Te gusta alguna de estas cosas?\n ";
             botClient.OnMessage += Bot_OnMessage;
             botClient.StartReceiving();
-            Thread.Sleep(int.MaxValue);
+          Thread.Sleep(int.MaxValue);
         }
 
         //static void validabots() { }
@@ -54,14 +54,16 @@ namespace Awesome
 
                     //Console.WriteLine("Nombre del bot es:" + botClient.bot);
 
-                    bool tienepermiso = true;
-                    Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Status);
+                    bool esadmin = true;
+                    string status_usuario = botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString();
+                    Console.WriteLine($"Tipo de mensaje de usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Status);
                     Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status);
                     //Console.WriteLine($"usuario es " + botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Id);
-                    if (botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "administrator"
-                         || botClient.GetChatMemberAsync(e.Message.Chat.Id, e.Message.From.Id).Result.Status.ToString() == "creator")
-                    { tienepermiso = true; }
-                    else { tienepermiso = false; }
+                    if (status_usuario.ToLower()  == "administrator"
+                         || status_usuario.ToLower() == "creator")
+
+                    { esadmin = true; }
+                    else { esadmin = false; }
 
                     switch (accion)
                     {
@@ -75,7 +77,7 @@ namespace Awesome
                             //}
 
 
-                            if (tienepermiso)
+                            if (esadmin)
                             {
                                 validabots = !validabots;
                                 if (validabots)
@@ -95,27 +97,49 @@ namespace Awesome
                             }
                             else
                             {
-                                await botClient.SendTextMessageAsync(
-                                              chatId: e.Message.Chat,
-                                              text: "No tiene permiso para usar este comando."
-                                              );
+                                no_tiene_permiso(e);
                             }
 
                             break;
                         case "/bienvenida":
-                            if (tienepermiso)
+                            if (esadmin)
                             {
                                 int i = e.Message.Text.IndexOf(" ") + 1;
                                 mensaje_de_bienvenida = e.Message.Text.Substring(i);
+                                await botClient.SendTextMessageAsync(
+                                              chatId: e.Message.Chat,
+                                              text: "Se cambio mensaje de bienvenida"
+                                              );
                             }
                             else
                             {
-                                await botClient.SendTextMessageAsync(
-                                              chatId: e.Message.Chat,
-                                              text: "No tiene permiso para usar este comando."
-                                              );
+                                no_tiene_permiso(e);
                             }
                             
+                            break;
+                        case "/getoutofjail":
+                            if (esadmin)
+                            {
+                                int i = e.Message.Text.IndexOf(" ") + 1;
+                                int id_persona;
+                                string persona_liberada= e.Message.Text.Substring(i);
+                                Console.WriteLine();
+                                if (e.Message.ReplyToMessage.From.Id ==null)
+                                {
+                                    await botClient.SendTextMessageAsync(
+                                              chatId: e.Message.Chat,
+                                              text: "Tiene que responder a un mensaje de la persona que desea desbloquear."
+                                              );
+                                }
+                                else
+                                {
+                                    botClient.RestrictChatMemberAsync(e.Message.Chat.Id, e.Message.ReplyToMessage.From.Id, DateTime.Now, true, true, true, true);
+                                }                                
+                            }
+                            else
+                            {
+                                no_tiene_permiso(e);
+                            }
                             break;
                         default: 
                             accion = "mensaje";
@@ -158,7 +182,7 @@ namespace Awesome
                     {
                         await botClient.SendTextMessageAsync(
                           chatId: e.Message.Chat,
-                          text: "Hola [inserte nombre aqui]!" +mensaje_de_bienvenida 
+                          text: "Hola "+ e.Message.NewChatMembers[0].FirstName + " " + e.Message.NewChatMembers[0].LastName + mensaje_de_bienvenida 
                       );
                     }
                     else
@@ -169,7 +193,10 @@ namespace Awesome
                           );
                     }
 
-
+                    await botClient.SendTextMessageAsync(
+                              chatId: e.Message.Chat,
+                              text: "Se restringio acceso para " + e.Message.NewChatMembers[0].FirstName + " " + e.Message.NewChatMembers[0].LastName
+                          );
                     //Setea los permisos
                     botClient.RestrictChatMemberAsync(e.Message.Chat.Id, e.Message.NewChatMembers[0].Id, DateTime.Now.AddDays(7), true, false, false, false);
 
@@ -185,12 +212,20 @@ namespace Awesome
 
         }
 
+        static void no_tiene_permiso(MessageEventArgs e)
+        {
+            botClient.SendTextMessageAsync(
+                                              chatId: e.Message.Chat,
+                                              text: "No tiene permiso para usar este comando."
+                                              );
+        }
+
         static String textorandom()
         {
             string texto = "Se quiso unir un bot, pero fue echado";
             Random randObj = new Random();
 
-            switch (randObj.Next(5).ToString())
+            switch (randObj.Next(6).ToString())
             {
                 case "0":
                     texto += " con una patada en el traste.";
